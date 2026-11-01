@@ -242,6 +242,24 @@ export class IntegrationManager {
   getAllowedSocialsIntegrations() {
     return socialIntegrationList.map((p) => p.identifier);
   }
+
+  // Organization.allowedProviders is a JSON array of the providers the
+  // organization can connect, null allows every provider.
+  getOrganizationSocialsIntegrations(allowedProviders?: string | null) {
+    const all = this.getAllowedSocialsIntegrations();
+    if (!allowedProviders) {
+      return all;
+    }
+
+    try {
+      const allowed = JSON.parse(allowedProviders);
+      return Array.isArray(allowed)
+        ? all.filter((p) => allowed.includes(p))
+        : [];
+    } catch (err) {
+      return [];
+    }
+  }
   getSocialIntegration(integration: string): SocialProvider {
     return socialIntegrationList.find((i) => i.identifier === integration)!;
   }

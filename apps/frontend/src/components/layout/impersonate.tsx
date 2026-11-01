@@ -829,6 +829,21 @@ const ViewStats = () => {
   );
 };
 
+const ViewWorkspaces = () => {
+  const t = useT();
+  const handleClick = useCallback(() => {
+    window.location.href = '/admin/workspaces';
+  }, []);
+  return (
+    <div
+      className="px-[10px] rounded-[4px] bg-green-700 text-white cursor-pointer whitespace-nowrap"
+      onClick={handleClick}
+    >
+      {t('workspaces', 'Workspaces')}
+    </div>
+  );
+};
+
 const ImportDebugPost = () => {
   const { openModal } = useModals();
   const t = useT();
@@ -1114,6 +1129,7 @@ export const Impersonate = () => {
                 </div>
                 <ImportDebugPost />
                 <AddAnnouncement />
+                <ViewWorkspaces />
                 <ViewErrors />
                 <ViewStats />
               </div>

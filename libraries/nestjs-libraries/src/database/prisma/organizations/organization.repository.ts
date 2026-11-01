@@ -501,6 +501,138 @@ export class OrganizationRepository {
     });
   }
 
+  getOrganizationsForAdmin(userId: string, search?: string) {
+    return this._organization.model.organization.findMany({
+      where: {
+        deletedAt: null,
+        ...(search
+          ? {
+              name: {
+                contains: search,
+                mode: 'insensitive',
+              },
+            }
+          : {}),
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 100,
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        allowedProviders: true,
+        users: {
+          where: {
+            userId,
+          },
+          select: {
+            role: true,
+          },
+        },
+        _count: {
+          select: {
+            users: true,
+            Integration: {
+              where: {
+                deletedAt: null,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  createOrganizationForAdmin(userId: string, name: string) {
+    return this._organization.model.organization.create({
+      data: {
+        name,
+        apiKey: AuthService.fixedEncryption(makeSecureId(20)),
+        isTrailing: false,
+        users: {
+          create: {
+            role: Role.SUPERADMIN,
+            userId,
+          },
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+  }
+
+  updateAllowedProviders(orgId: string, allowedProviders: string | null) {
+    return this._organization.model.organization.update({
+      where: {
+        id: orgId,
+      },
+      data: {
+        allowedProviders,
+      },
+      select: {
+        id: true,
+      },
+    });
+  }
+
+  // Registration through an invite while DISABLE_REGISTRATION is on: the user
+  // only joins the inviting organization, no personal organization is created.
+  async createUserInOrg(
+    body: Pick<CreateOrgUserDto, 'email' | 'password' | 'provider'> & {
+      providerId?: string;
+    },
+    invite: { id: string; orgId: string; role: 'USER' | 'ADMIN' },
+    hasEmail: boolean,
+    ip: string,
+    userAgent: string
+  ) {
+    const inviteUsed = await this._user.model.user.findFirst({
+      where: {
+        inviteId: invite.id,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (inviteUsed) {
+      return false;
+    }
+
+    return this._userOrg.model.userOrganization.create({
+      data: {
+        role: invite.role,
+        organization: {
+          connect: {
+            id: invite.orgId,
+          },
+        },
+        user: {
+          create: {
+            activated: body.provider !== 'LOCAL' || !hasEmail,
+            email: body.email,
+            password: body.password
+              ? AuthService.hashPassword(body.password)
+              : '',
+            providerName: body.provider,
+            providerId: body.providerId || '',
+            timezone: 0,
+            ip,
+            agent: userAgent,
+            inviteId: invite.id,
+          },
+        },
+      },
+      select: {
+        organizationId: true,
+        user: true,
+      },
+    });
+  }
+
   getOrgByCustomerId(customerId: string) {
     return this._organization.model.organization.findFirst({
       where: {

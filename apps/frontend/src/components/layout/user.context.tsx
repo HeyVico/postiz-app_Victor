@@ -14,6 +14,8 @@ export const UserContext = createContext<
       publicApi: string;
       role: 'USER' | 'ADMIN' | 'SUPERADMIN';
       totalChannels: number;
+      manageTeam: boolean;
+      allowedProviders: string[] | null;
       isLifetime?: boolean;
       impersonate: boolean;
       allowTrial: boolean;

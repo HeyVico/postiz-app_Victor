@@ -226,7 +226,7 @@ export class IntegrationsController {
   ) {
     if (
       !this._integrationManager
-        .getAllowedSocialsIntegrations()
+        .getOrganizationSocialsIntegrations(org.allowedProviders)
         .includes(integration)
     ) {
       throw new Error('Integration not allowed');

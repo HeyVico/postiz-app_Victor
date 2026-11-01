@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, FC, ReactNode, useContext, useEffect } from 'react';
+import { setBrandName } from '@gitroom/react/translation/i18next';
 interface VariableContextInterface {
   stripeClient: string;
   billingEnabled: boolean;
@@ -35,6 +36,8 @@ interface VariableContextInterface {
   googleAdsId?: string;
   googleAdsTrialTracking?: string;
   recaptchaSiteKey?: string;
+  brandName?: string;
+  brandLogoUrl?: string;
 }
 const VariableContext = createContext({
   stripeClient: '',
@@ -69,6 +72,8 @@ const VariableContext = createContext({
   sentryDsn: '',
   extensionId: '',
   recaptchaSiteKey: '',
+  brandName: '',
+  brandLogoUrl: '',
 } as VariableContextInterface);
 export const VariableContextComponent: FC<
   VariableContextInterface & {
@@ -76,6 +81,8 @@ export const VariableContextComponent: FC<
   }
 > = (props) => {
   const { children, ...otherProps } = props;
+  // set before the children render so translations match the server render
+  setBrandName(otherProps.brandName);
   useEffect(() => {
     if (typeof window !== 'undefined') {
       // @ts-ignore

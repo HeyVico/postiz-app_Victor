@@ -194,7 +194,7 @@ export const TeamsComponent = () => {
                   ? t('admin', 'Admin')
                   : t('super_admin', 'Super Admin')}
               </div>
-              {+myLevel > +getLevel(p.role) ? (
+              {user?.manageTeam && +myLevel > +getLevel(p.role) ? (
                 <div className="flex-1 flex justify-end">
                   <Button
                     className={`!bg-customColor3 !h-[24px] border border-customColor21 rounded-[4px] text-[12px]`}
@@ -226,11 +226,13 @@ export const TeamsComponent = () => {
             </div>
           ))}
         </div>
-        <div>
-          <Button onClick={addMember}>
-            {t('add_another_member', 'Add another member')}
-          </Button>
-        </div>
+        {user?.manageTeam && (
+          <div>
+            <Button onClick={addMember}>
+              {t('add_another_member', 'Add another member')}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

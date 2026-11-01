@@ -11,6 +11,13 @@ import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/for
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newsletter.service';
 
+export type Invite = {
+  email?: string;
+  role: 'USER' | 'ADMIN';
+  orgId: string;
+  id: string;
+};
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -35,7 +42,7 @@ export class AuthService {
     body: CreateOrgUserDto | LoginUserDto,
     ip: string,
     userAgent: string,
-    addToOrg?: boolean | { orgId: string; role: 'USER' | 'ADMIN'; id: string }
+    addToOrg?: boolean | Invite
   ) {
     if (provider === Provider.LOCAL) {
       if (process.env.DISALLOW_PLUS && body.email.includes('+')) {
@@ -48,6 +55,25 @@ export class AuthService {
       if (body instanceof CreateOrgUserDto) {
         if (user) {
           throw new Error('Email already exists');
+        }
+
+        const invite = this.getRegistrationInvite(addToOrg, body.email);
+        if (invite) {
+          const joined = await this._organizationService.createUserInOrg(
+            body,
+            invite,
+            ip,
+            userAgent
+          );
+
+          if (!joined) {
+            throw new Error('This invitation was already used');
+          }
+
+          return this.sendActivationEmail(body.email, {
+            addedOrg: joined,
+            jwt: await this.jwt(joined.user),
+          });
         }
 
         if (!(await this.canRegister(provider))) {
@@ -70,13 +96,10 @@ export class AuthService {
               )
             : false;
 
-        const obj = { addedOrg, jwt: await this.jwt(create.users[0].user) };
-        await this._emailService.sendEmailSync(
-          body.email,
-          'Activate your account',
-          `Click <a href="${process.env.FRONTEND_URL}/auth/activate/${obj.jwt}">here</a> to activate your account`
-        );
-        return obj;
+        return this.sendActivationEmail(body.email, {
+          addedOrg,
+          jwt: await this.jwt(create.users[0].user),
+        });
       }
 
       if (!user || !AuthChecker.comparePassword(body.password, user.password)) {
@@ -94,7 +117,8 @@ export class AuthService {
       provider,
       body as CreateOrgUserDto,
       ip,
-      userAgent
+      userAgent,
+      addToOrg
     );
 
     const addedOrg =
@@ -107,6 +131,43 @@ export class AuthService {
           )
         : false;
     return { addedOrg, jwt: await this.jwt(user) };
+  }
+
+  private async sendActivationEmail<T extends { jwt: string }>(
+    email: string,
+    obj: T
+  ) {
+    await this._emailService.sendEmailSync(
+      email,
+      'Activate your account',
+      `Click <a href="${process.env.FRONTEND_URL}/auth/activate/${obj.jwt}">here</a> to activate your account`
+    );
+    return obj;
+  }
+
+  // While DISABLE_REGISTRATION is on, an invite is the only way to register.
+  // An emailed invite only works for the invited address, a copied invite link
+  // (no email) works for whoever opens it. Both are single use.
+  private getRegistrationInvite(
+    addToOrg: boolean | Invite | undefined,
+    email: string
+  ) {
+    if (
+      process.env.DISABLE_REGISTRATION !== 'true' ||
+      !addToOrg ||
+      typeof addToOrg === 'boolean'
+    ) {
+      return undefined;
+    }
+
+    if (
+      addToOrg.email &&
+      addToOrg.email.toLowerCase() !== (email || '').toLowerCase()
+    ) {
+      throw new Error('This invitation was sent to a different email address');
+    }
+
+    return addToOrg;
   }
 
   public getOrgFromCookie(cookie?: string) {
@@ -126,12 +187,7 @@ export class AuthService {
         return false;
       }
 
-      return getOrg as {
-        email: string;
-        role: 'USER' | 'ADMIN';
-        orgId: string;
-        id: string;
-      };
+      return getOrg as Invite;
     } catch (err) {
       return false;
     }
@@ -141,7 +197,8 @@ export class AuthService {
     provider: Provider,
     body: CreateOrgUserDto,
     ip: string,
-    userAgent: string
+    userAgent: string,
+    addToOrg?: boolean | Invite
   ) {
     const providerInstance = this._providerManager.getProvider(provider);
     const providerUser = await providerInstance.getUser(body.providerToken);
@@ -156,6 +213,27 @@ export class AuthService {
     );
     if (user) {
       return user;
+    }
+
+    const invite = this.getRegistrationInvite(addToOrg, providerUser.email);
+    if (invite) {
+      const joined = await this._organizationService.createUserInOrg(
+        {
+          email: providerUser.email,
+          password: '',
+          provider,
+          providerId: providerUser.id,
+        },
+        invite,
+        ip,
+        userAgent
+      );
+
+      if (!joined) {
+        throw new Error('This invitation was already used');
+      }
+
+      return joined.user;
     }
 
     if (!(await this.canRegister(provider))) {
