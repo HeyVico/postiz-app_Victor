@@ -89,7 +89,7 @@ export class EnterpriseController {
 
       if (
         !this._integrationManager
-          .getAllowedSocialsIntegrations()
+          .getOrganizationSocialsIntegrations(org.allowedProviders)
           .includes(load.provider)
       ) {
         throw new Error('Integration not allowed');

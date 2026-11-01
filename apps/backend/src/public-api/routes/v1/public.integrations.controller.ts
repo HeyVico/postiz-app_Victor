@@ -351,7 +351,7 @@ export class PublicIntegrationsController {
     Sentry.metrics.count('public_api-request', 1);
     if (
       !this._integrationManager
-        .getAllowedSocialsIntegrations()
+        .getOrganizationSocialsIntegrations(org.allowedProviders)
         .includes(integration)
     ) {
       throw new HttpException({ msg: 'Integration not allowed' }, 400);

@@ -76,6 +76,14 @@ export class NoAuthIntegrationsController {
 
     const org = await this._organizationService.getOrgById(organization);
 
+    if (
+      !this._integrationManager
+        .getOrganizationSocialsIntegrations(org?.allowedProviders)
+        .includes(integration)
+    ) {
+      throw new Error('Integration not allowed');
+    }
+
     if (!integrationProvider.customFields) {
       await ioRedis.del(`login:${body.state}`);
     }

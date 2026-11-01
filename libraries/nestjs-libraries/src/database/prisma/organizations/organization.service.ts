@@ -30,8 +30,46 @@ export class OrganizationService {
     );
   }
 
+  async createUserInOrg(
+    body: Pick<CreateOrgUserDto, 'email' | 'password' | 'provider'> & {
+      providerId?: string;
+    },
+    invite: { id: string; orgId: string; role: 'USER' | 'ADMIN' },
+    ip: string,
+    userAgent: string
+  ) {
+    return this._organizationRepository.createUserInOrg(
+      body,
+      invite,
+      this._notificationsService.hasEmailProvider(),
+      ip,
+      userAgent
+    );
+  }
+
   async getCount() {
     return this._organizationRepository.getCount();
+  }
+
+  getOrganizationsForAdmin(userId: string, search?: string) {
+    return this._organizationRepository.getOrganizationsForAdmin(
+      userId,
+      search
+    );
+  }
+
+  createOrganizationForAdmin(userId: string, name: string) {
+    return this._organizationRepository.createOrganizationForAdmin(
+      userId,
+      name
+    );
+  }
+
+  updateAllowedProviders(orgId: string, providers: string[] | null) {
+    return this._organizationRepository.updateAllowedProviders(
+      orgId,
+      providers ? JSON.stringify(providers) : null
+    );
   }
 
   async createMaxUser(id: string, name: string, saasName: string, email: string) {
@@ -61,6 +99,14 @@ export class OrganizationService {
 
   getOrgByApiKey(api: string) {
     return this._organizationRepository.getOrgByApiKey(api);
+  }
+
+  // RESTRICT_TEAM_MANAGEMENT=true: only platform admins (User.isSuperAdmin)
+  // can invite or remove team members, organization admins cannot.
+  canManageTeam(user: User) {
+    return (
+      process.env.RESTRICT_TEAM_MANAGEMENT !== 'true' || !!user?.isSuperAdmin
+    );
   }
 
   async canUseSuperAdminApi(orgId: string) {

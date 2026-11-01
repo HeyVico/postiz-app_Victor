@@ -44,6 +44,10 @@ export class SettingsController {
     @GetUserFromRequest() user: User,
     @Body() body: AddTeamMemberDto
   ) {
+    if (!this._organizationService.canManageTeam(user)) {
+      throw new HttpException('Unauthorized', 400);
+    }
+
     return this._organizationService.inviteTeamMember(org, user, body);
   }
 
@@ -66,9 +70,14 @@ export class SettingsController {
     [AuthorizationActions.Create, Sections.ADMIN]
   )
   deleteTeamMember(
+    @GetUserFromRequest() user: User,
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string
   ) {
+    if (!this._organizationService.canManageTeam(user)) {
+      throw new HttpException('Unauthorized', 400);
+    }
+
     return this._organizationService.deleteTeamMember(org, id);
   }
 

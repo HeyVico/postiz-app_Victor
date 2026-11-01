@@ -33,14 +33,20 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ onClose }) => {
   const [step, setStep] = useState(1);
   const modals = useModals();
   const t = useT();
+  // the agents and tutorial steps are about Postiz, a white-labeled app only
+  // keeps the channels step
+  const { brandName } = useVariables();
 
   const steps = useMemo(
-    () => [
-      t('connect_channels', 'Connect Channels'),
-      t('connect_agents', 'Connect Agents'),
-      t('watch_tutorial', 'Watch Tutorial'),
-    ],
-    [t]
+    () =>
+      brandName
+        ? [t('connect_channels', 'Connect Channels')]
+        : [
+            t('connect_channels', 'Connect Channels'),
+            t('connect_agents', 'Connect Agents'),
+            t('watch_tutorial', 'Watch Tutorial'),
+          ],
+    [t, brandName]
   );
 
   return (
@@ -103,8 +109,8 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ onClose }) => {
             {/* Step content */}
             {step === 1 && (
               <OnboardingStep1
-                onNext={() => setStep(2)}
-                onSkip={() => setStep(2)}
+                onNext={() => (brandName ? onClose() : setStep(2))}
+                onSkip={() => (brandName ? onClose() : setStep(2))}
               />
             )}
             {step === 2 && (

@@ -19,6 +19,7 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import clsx from 'clsx';
 import copy from 'copy-to-clipboard';
 import { capitalize } from 'lodash';
+import { useUser } from '@gitroom/frontend/components/layout/user.context';
 const resolver = classValidatorResolver(ApiKeyDto);
 
 export const useAddProvider = (update?: () => void, invite?: boolean) => {
@@ -317,6 +318,7 @@ const ChromeExtensionWarning: FC<{
 }> = ({ onConfirm, onCancel }) => {
   const modals = useModals();
   const t = useT();
+  const { brandName } = useVariables();
   return (
     <div className="flex flex-col gap-[16px] pt-[8px]">
       <p className="text-[14px] text-textColor/80">
@@ -348,8 +350,8 @@ const ChromeExtensionWarning: FC<{
           We will store your cookies securely to facilitate the connection.
         </li>
         <li>
-          Postiz does not take responsibility for any issues arising or account
-          termination due to the use of this method.
+          {brandName || 'Postiz'} does not take responsibility for any issues
+          arising or account termination due to the use of this method.
         </li>
       </ul>
       <div className="flex gap-[10px] mt-[8px]">
@@ -409,6 +411,7 @@ export const AddProviderComponent: FC<{
 }> = (props) => {
   const { update, social, article, onboarding, isMobile } = props;
   const { isGeneral, extensionId } = useVariables();
+  const user = useUser();
   const toaster = useToaster();
   const router = useRouter();
   const fetch = useFetch();
@@ -693,6 +696,11 @@ export const AddProviderComponent: FC<{
           )}
         >
           {social
+            .filter(
+              (item) =>
+                !user?.allowedProviders ||
+                user.allowedProviders.includes(item.identifier)
+            )
             .filter((item) => {
               if (!props.invite) {
                 return true;
