@@ -1,8 +1,8 @@
-import { IsArray, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsString, ValidateIf } from 'class-validator';
 
 export class AdminAllowedProvidersDto {
   // null allows the organization to connect every provider
-  @IsOptional()
+  @ValidateIf((o) => o.providers !== null)
   @IsArray()
   @IsString({ each: true })
   providers: string[] | null;

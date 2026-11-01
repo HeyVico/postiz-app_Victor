@@ -80,6 +80,7 @@ export class OrganizationRepository {
       where: {
         organizationId: orgId,
         disabled: false,
+        role: Role.SUPERADMIN,
         user: {
           isSuperAdmin: true,
           deletedAt: null,
@@ -551,9 +552,12 @@ export class OrganizationRepository {
         name,
         apiKey: AuthService.fixedEncryption(makeSecureId(20)),
         isTrailing: false,
+        // ADMIN and not SUPERADMIN: the super admin API is only granted to an
+        // organization owned by a platform admin (see getSuperAdminUser), the
+        // API key of a client workspace must not act as other organizations
         users: {
           create: {
-            role: Role.SUPERADMIN,
+            role: Role.ADMIN,
             userId,
           },
         },
@@ -602,6 +606,24 @@ export class OrganizationRepository {
       return false;
     }
 
+    const org = await this._organization.model.organization.findFirst({
+      where: {
+        id: invite.orgId,
+        deletedAt: null,
+      },
+      select: {
+        subscription: true,
+      },
+    });
+
+    if (
+      !org ||
+      (process.env.STRIPE_PUBLISHABLE_KEY &&
+        org.subscription?.subscriptionTier === SubscriptionTier.STANDARD)
+    ) {
+      return false;
+    }
+
     return this._userOrg.model.userOrganization.create({
       data: {
         role: invite.role,
@@ -628,7 +650,13 @@ export class OrganizationRepository {
       },
       select: {
         organizationId: true,
-        user: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            activated: true,
+          },
+        },
       },
     });
   }

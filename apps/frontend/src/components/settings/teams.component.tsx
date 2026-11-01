@@ -118,7 +118,13 @@ export const TeamsComponent = () => {
   const user = useUser();
   const modals = useModals();
   const t = useT();
-  const myLevel = user?.role === 'USER' ? 0 : user?.role === 'ADMIN' ? 1 : 2;
+  // a platform admin joins client workspaces as ADMIN but manages every member
+  const myLevel =
+    user?.role === 'USER'
+      ? 0
+      : user?.role === 'ADMIN' && !user?.isSuperAdmin
+      ? 1
+      : 2;
   const getLevel = useCallback(
     (role: 'USER' | 'ADMIN' | 'SUPERADMIN') =>
       role === 'USER' ? 0 : role === 'ADMIN' ? 1 : 2,

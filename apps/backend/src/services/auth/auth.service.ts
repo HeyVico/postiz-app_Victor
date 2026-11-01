@@ -57,7 +57,10 @@ export class AuthService {
           throw new Error('Email already exists');
         }
 
-        const invite = this.getRegistrationInvite(addToOrg, body.email);
+        const canRegister = await this.canRegister(provider);
+        const invite = canRegister
+          ? undefined
+          : this.getRegistrationInvite(addToOrg, body.email);
         if (invite) {
           const joined = await this._organizationService.createUserInOrg(
             body,
@@ -67,7 +70,7 @@ export class AuthService {
           );
 
           if (!joined) {
-            throw new Error('This invitation was already used');
+            throw new Error('This invitation is no longer valid');
           }
 
           return this.sendActivationEmail(body.email, {
@@ -76,7 +79,7 @@ export class AuthService {
           });
         }
 
-        if (!(await this.canRegister(provider))) {
+        if (!canRegister) {
           throw new Error('Registration is disabled');
         }
 
@@ -145,18 +148,15 @@ export class AuthService {
     return obj;
   }
 
-  // While DISABLE_REGISTRATION is on, an invite is the only way to register.
-  // An emailed invite only works for the invited address, a copied invite link
-  // (no email) works for whoever opens it. Both are single use.
+  // When registration is closed (DISABLE_REGISTRATION), an invite still lets a
+  // new user register. An emailed invite only works for the invited address, a
+  // copied invite link (no email) works for whoever opens it. Both are single
+  // use.
   private getRegistrationInvite(
     addToOrg: boolean | Invite | undefined,
     email: string
   ) {
-    if (
-      process.env.DISABLE_REGISTRATION !== 'true' ||
-      !addToOrg ||
-      typeof addToOrg === 'boolean'
-    ) {
+    if (!addToOrg || typeof addToOrg === 'boolean') {
       return undefined;
     }
 
@@ -215,7 +215,10 @@ export class AuthService {
       return user;
     }
 
-    const invite = this.getRegistrationInvite(addToOrg, providerUser.email);
+    const canRegister = await this.canRegister(provider);
+    const invite = canRegister
+      ? undefined
+      : this.getRegistrationInvite(addToOrg, providerUser.email);
     if (invite) {
       const joined = await this._organizationService.createUserInOrg(
         {
@@ -230,13 +233,13 @@ export class AuthService {
       );
 
       if (!joined) {
-        throw new Error('This invitation was already used');
+        throw new Error('This invitation is no longer valid');
       }
 
       return joined.user;
     }
 
-    if (!(await this.canRegister(provider))) {
+    if (!canRegister) {
       throw new Error('Registration is disabled');
     }
 
@@ -407,7 +410,7 @@ export class AuthService {
     return { token };
   }
 
-  private async jwt(user: User) {
+  private async jwt(user: Partial<User>) {
     if (user.password) {
       delete user.password;
     }
